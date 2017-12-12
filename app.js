@@ -6,7 +6,9 @@ const index = require("./routes/index");
 const users = require("./routes/users");
 const User = require("./models/User");
 const auth = require("./auth");
-
+const expressSession = require("express-session");
+const flash = require("express-flash");
+app.use(flash());
 app.locals.appName = "Passport Scrapbook";
 
 // ----------------------------------------
@@ -46,8 +48,8 @@ app.set("view engine", "handlebars");
 // ----------------------------------------
 // Flash Messages
 // ----------------------------------------
-const flash = require("express-flash-messages");
-app.use(flash());
+const flashMessages = require("express-flash-messages");
+app.use(flashMessages());
 
 // ----------------------------------------
 // Body Parser
@@ -60,13 +62,14 @@ app.use(bodyParser.json());
 // Sessions/Cookies
 // ----------------------------------------
 const cookieParser = require("cookie-parser");
-const cookieSession = require("cookie-session");
+
 
 app.use(cookieParser());
 app.use(
-  cookieSession({
-    name: "session",
-    keys: [process.env.SESSION_SECRET || "secret"]
+  expressSession({
+    secret: process.env.secret || "keyboard cat",
+    saveUninitialized: false,
+    resave: false
   })
 );
 
@@ -88,10 +91,47 @@ app.use((req, res, next) => {
 // ----------------------------------------
 app.use(express.static(`${__dirname}/public`));
 
+
+
+// --------------------------------------
+//Passport Strategies
+//---------------------------------------
+
+//**Local
+passport.use(
+  new LocalStrategy(function(username, password, done) {
+  
+    User.findOne({ username }, function(err, user) {
+    	
+      if (err) return done(err);
+      if (!user || !user.validPassword(password)) {
+        return done(null, false, { message: "Invalid username/password" });
+      }
+      return done(null, user);
+    });
+  })
+);
+
+passport.serializeUser(function(user, done) {
+	
+	
+
+  done(null, user.id);
+});
+
+passport.deserializeUser(function(id, done) {
+  User.findById(id, function(err, user) {
+    done(err, user);
+  });
+});
+
+
 // ----------------------------------------
 //Routes
 // ----------------------------------------
 app.get("/", (req, res) => {
+	console.log("****");
+	console.log(req.user);
   if (req.user) {
     res.render("welcome/index", { currentUser: req.user });
   } else {
@@ -107,6 +147,9 @@ app.get("/register", (req, res) => {
   res.render("register");
 });
 
+
+
+
 app.post(
   "/login",
   passport.authenticate("local", {
@@ -119,7 +162,7 @@ app.post(
 app.post("/register", (req, res, next) => {
   const { username, password } = req.body;
   const user = new User({ username, password });
-  user.save((err, user) => {
+  user.save((err) => {
     req.login(user, function(err) {
       if (err) {
         return next(err);
@@ -144,33 +187,7 @@ app.get(
   })
 );
 
-// --------------------------------------
-//Passport Strategies
-//---------------------------------------
 
-//**Local
-passport.use(
-  new LocalStrategy(function(username, password, done) {
-    User.findOne({ username }, function(err, user) {
-      console.log(user);
-      if (err) return done(err);
-      if (!user || !user.validPassword(password)) {
-        return done(null, false, { message: "Invalid username/password" });
-      }
-      return done(null, user);
-    });
-  })
-);
-
-passport.serializeUser(function(user, done) {
-  done(null, user.id);
-});
-
-passport.deserializeUser(function(id, done) {
-  User.findById(id, function(err, user) {
-    done(err, user);
-  });
-});
 
 //**Facebook
 passport.use(
