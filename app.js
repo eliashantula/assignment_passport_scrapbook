@@ -7,6 +7,8 @@ const auth = require("./auth");
 const expressSession = require("express-session");
 const flash = require("express-flash");
 
+require("dotenv").load();
+
 // Local
 app.locals.appName = "Passport Scrapbook";
 
@@ -102,7 +104,6 @@ app.use(express.static(`${__dirname}/public`));
 //---------------------
 passport.use(
   new LocalStrategy(function(email, password, done) {
-    
     User.findOne({ email }, function(err, user) {
       if (err) return done(err);
       if (!user || !user.validPassword(password)) {
@@ -129,8 +130,8 @@ passport.deserializeUser(function(id, done) {
 passport.use(
   new FacebookStrategy(
     {
-      clientID: auth.facebookAuth.clientID,
-      clientSecret: auth.facebookAuth.clientSecret,
+      clientID: process.env.FACEBOOK_APP_ID,
+      clientSecret: process.env.FACEBOOK_APP_SECRET,
       callbackURL: "http://localhost:3000/auth/facebook/callback"
     },
     function(accessToken, refreshToken, profile, done) {
@@ -161,8 +162,6 @@ passport.use(
 //Routes
 // ----------------------------------------
 app.get("/", (req, res) => {
-	
-
   if (req.session.passport && req.session.passport.user) {
     res.render("welcome/index", { currentUser: req.session.passport.user });
   } else {
@@ -191,7 +190,6 @@ app.post("/register", (req, res, next) => {
   const { email, password } = req.body;
   const user = new User({ email, password });
   user.save(err => {
-   
     res.redirect("/login");
     // req.login(user, function(err) {
     //   if (err) {
