@@ -135,6 +135,8 @@ passport.use(
       callbackURL: "http://localhost:3000/auth/facebook/callback",
       profileFields: [
         "id",
+        "cover",
+        "picture",
         "displayName",
         "email",
         "birthday",
@@ -143,22 +145,25 @@ passport.use(
         "last_name",
         "middle_name",
         "gender",
-        "link",
-        "photos"
+        "link"
       ]
     },
     function(accessToken, refreshToken, profile, done) {
       const facebookId = profile.id;
       const displayName = profile.displayName;
       const email = profile.emails[0].value;
-
-      console.log(profile);
+      const photo = profile.photos[0].value;
       User.findOne({ facebookId }, function(err, user) {
         if (err) return done(err);
 
         if (!user) {
           // Create a new account if one doesn't exist
-          user = new User({ facebookId, displayName, email });
+          user = new User({
+            facebookId,
+            displayName,
+            email,
+            photo
+          });
           user.save((err, user) => {
             if (err) return done(err);
             done(null, user);
@@ -179,9 +184,6 @@ app.get("/", async (req, res) => {
   try {
     if (req.session.passport && req.session.passport.user) {
       let currentUser = await User.findById(req.session.passport.user);
-      console.log("==================");
-      console.log(currentUser);
-      console.log("==================");
       res.render("welcome/index", {
         currentUser: currentUser
       });

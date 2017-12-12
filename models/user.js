@@ -6,7 +6,8 @@ const UserSchema = mongoose.Schema({
   email: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: false },
   displayName: { type: String, required: true },
-  facebookId: { type: String, required: true, unique: true }
+  facebookId: { type: String, required: true, unique: true },
+  photo: { type: String }
 });
 
 UserSchema.plugin(uniqueValidator);
