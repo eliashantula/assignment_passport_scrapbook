@@ -8,7 +8,8 @@ const User = require("./models/User");
 const auth = require("./auth");
 const expressSession = require("express-session");
 const flash = require("express-flash");
-app.use(flash());
+
+// Local
 app.locals.appName = "Passport Scrapbook";
 
 // ----------------------------------------
@@ -63,8 +64,12 @@ app.use(bodyParser.json());
 // ----------------------------------------
 const cookieParser = require("cookie-parser");
 
-
 app.use(cookieParser());
+
+// ----------------------------------------
+// Express Session
+// ----------------------------------------
+app.use(flash());
 app.use(
   expressSession({
     secret: process.env.secret || "keyboard cat",
@@ -91,18 +96,18 @@ app.use((req, res, next) => {
 // ----------------------------------------
 app.use(express.static(`${__dirname}/public`));
 
-
-
 // --------------------------------------
 //Passport Strategies
 //---------------------------------------
-
-//**Local
+//---------------------
+//**Local Strategy
+//---------------------
 passport.use(
   new LocalStrategy(function(username, password, done) {
-  
+    console.log(username);
+    console.log("=========");
+    console.log(password);
     User.findOne({ username }, function(err, user) {
-    	
       if (err) return done(err);
       if (!user || !user.validPassword(password)) {
         return done(null, false, { message: "Invalid username/password" });
@@ -113,9 +118,6 @@ passport.use(
 );
 
 passport.serializeUser(function(user, done) {
-	
-	
-
   done(null, user.id);
 });
 
@@ -125,71 +127,9 @@ passport.deserializeUser(function(id, done) {
   });
 });
 
-
-// ----------------------------------------
-//Routes
-// ----------------------------------------
-app.get("/", (req, res) => {
-	console.log("****");
-	console.log(req.user);
-  if (req.user) {
-    res.render("welcome/index", { currentUser: req.user });
-  } else {
-    res.redirect("/login");
-  }
-});
-
-app.get("/login", (req, res) => {
-  res.render("login");
-});
-
-app.get("/register", (req, res) => {
-  res.render("register");
-});
-
-
-
-
-app.post(
-  "/login",
-  passport.authenticate("local", {
-    successRedirect: "/",
-    failureRedirect: "/login",
-    failureFlash: true
-  })
-);
-
-app.post("/register", (req, res, next) => {
-  const { username, password } = req.body;
-  const user = new User({ username, password });
-  user.save((err) => {
-    req.login(user, function(err) {
-      if (err) {
-        return next(err);
-      }
-      return res.redirect("/");
-    });
-  });
-});
-
-app.get("/logout", function(req, res) {
-  req.logout();
-  res.redirect("/");
-});
-
-app.get("/auth/facebook", passport.authenticate("facebook"));
-
-app.get(
-  "/auth/facebook/callback",
-  passport.authenticate("facebook", {
-    successRedirect: "/",
-    failureRedirect: "/login"
-  })
-);
-
-
-
-//**Facebook
+//---------------------------
+//**Facebook Strategy
+//---------------------------
 passport.use(
   new FacebookStrategy(
     {
@@ -219,6 +159,67 @@ passport.use(
       });
     }
   )
+);
+
+// ----------------------------------------
+//Routes
+// ----------------------------------------
+app.get("/", (req, res) => {
+  if (req.session.passport.user) {
+    res.render("welcome/index", { currentUser: req.session.passport.user });
+  } else {
+    res.redirect("/login");
+  }
+});
+
+app.get("/login", (req, res) => {
+  res.render("login");
+});
+
+app.get("/register", (req, res) => {
+  res.render("register");
+});
+
+app.post(
+  "/login",
+  passport.authenticate("local", {
+    successRedirect: "/",
+    failureRedirect: "/login",
+    failureFlash: true
+  })
+);
+
+app.post("/register", (req, res, next) => {
+  const { username, password } = req.body;
+  const user = new User({ username, password });
+  user.save(err => {
+    if (err) {
+      console.log("========");
+      console.log(err);
+    }
+    res.redirect("login");
+    // req.login(user, function(err) {
+    //   if (err) {
+    //     return next(err);
+    //   }
+    //   return res.redirect("/");
+    // });
+  });
+});
+
+app.get("/logout", function(req, res) {
+  req.logout();
+  res.redirect("/");
+});
+
+app.get("/auth/facebook", passport.authenticate("facebook"));
+
+app.get(
+  "/auth/facebook/callback",
+  passport.authenticate("facebook", {
+    successRedirect: "/",
+    failureRedirect: "/login"
+  })
 );
 
 // ----------------------------------------
