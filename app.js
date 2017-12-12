@@ -132,11 +132,25 @@ passport.use(
     {
       clientID: process.env.FACEBOOK_APP_ID,
       clientSecret: process.env.FACEBOOK_APP_SECRET,
-      callbackURL: "http://localhost:3000/auth/facebook/callback"
+      callbackURL: "http://localhost:3000/auth/facebook/callback",
+      profileFields: [
+        "id",
+        "displayName",
+        "email",
+        "birthday",
+        "friends",
+        "first_name",
+        "last_name",
+        "middle_name",
+        "gender",
+        "link",
+        "photos"
+      ]
     },
     function(accessToken, refreshToken, profile, done) {
       const facebookId = profile.id;
       const displayName = profile.displayName;
+      const email = profile.emails[0].value;
 
       console.log(profile);
       User.findOne({ facebookId }, function(err, user) {
@@ -144,7 +158,7 @@ passport.use(
 
         if (!user) {
           // Create a new account if one doesn't exist
-          user = new User({ facebookId, displayName });
+          user = new User({ facebookId, displayName, email });
           user.save((err, user) => {
             if (err) return done(err);
             done(null, user);
@@ -161,11 +175,21 @@ passport.use(
 // ----------------------------------------
 //Routes
 // ----------------------------------------
-app.get("/", (req, res) => {
-  if (req.session.passport && req.session.passport.user) {
-    res.render("welcome/index", { currentUser: req.session.passport.user });
-  } else {
-    res.redirect("/login");
+app.get("/", async (req, res) => {
+  try {
+    if (req.session.passport && req.session.passport.user) {
+      let currentUser = await User.findById(req.session.passport.user);
+      console.log("==================");
+      console.log(currentUser);
+      console.log("==================");
+      res.render("welcome/index", {
+        currentUser: currentUser
+      });
+    } else {
+      res.redirect("/login");
+    }
+  } catch (err) {
+    console.log(err);
   }
 });
 
@@ -205,7 +229,13 @@ app.get("/logout", function(req, res) {
   res.redirect("login");
 });
 
-app.get("/auth/facebook", passport.authenticate("facebook"));
+app.get(
+  "/auth/facebook",
+  passport.authenticate("facebook", {
+    authType: "rerequest",
+    scope: ["user_friends", "email", "public_profile"]
+  })
+);
 
 app.get(
   "/auth/facebook/callback",
