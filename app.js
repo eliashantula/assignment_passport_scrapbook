@@ -2,8 +2,6 @@ const express = require("express");
 const app = express();
 const path = require("path");
 const favicon = require("serve-favicon");
-const index = require("./routes/index");
-const users = require("./routes/users");
 const User = require("./models/User");
 const auth = require("./auth");
 const expressSession = require("express-session");
@@ -103,14 +101,12 @@ app.use(express.static(`${__dirname}/public`));
 //**Local Strategy
 //---------------------
 passport.use(
-  new LocalStrategy(function(username, password, done) {
-    console.log(username);
-    console.log("=========");
-    console.log(password);
-    User.findOne({ username }, function(err, user) {
+  new LocalStrategy(function(email, password, done) {
+    
+    User.findOne({ email }, function(err, user) {
       if (err) return done(err);
       if (!user || !user.validPassword(password)) {
-        return done(null, false, { message: "Invalid username/password" });
+        return done(null, false, { message: "Invalid email/password" });
       }
       return done(null, user);
     });
@@ -165,7 +161,9 @@ passport.use(
 //Routes
 // ----------------------------------------
 app.get("/", (req, res) => {
-  if (req.session.passport.user) {
+	
+
+  if (req.session.passport && req.session.passport.user) {
     res.render("welcome/index", { currentUser: req.session.passport.user });
   } else {
     res.redirect("/login");
@@ -190,14 +188,11 @@ app.post(
 );
 
 app.post("/register", (req, res, next) => {
-  const { username, password } = req.body;
-  const user = new User({ username, password });
+  const { email, password } = req.body;
+  const user = new User({ email, password });
   user.save(err => {
-    if (err) {
-      console.log("========");
-      console.log(err);
-    }
-    res.redirect("login");
+   
+    res.redirect("/login");
     // req.login(user, function(err) {
     //   if (err) {
     //     return next(err);
@@ -209,7 +204,7 @@ app.post("/register", (req, res, next) => {
 
 app.get("/logout", function(req, res) {
   req.logout();
-  res.redirect("/");
+  res.redirect("login");
 });
 
 app.get("/auth/facebook", passport.authenticate("facebook"));
